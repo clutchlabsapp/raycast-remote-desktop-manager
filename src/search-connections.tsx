@@ -224,7 +224,7 @@ function FolderView({
         <List.Item
           key={`folder:${childFolder}`}
           icon={{ source: Icon.Folder, tintColor: Color.Orange }}
-          title={childFolder.split("\\").pop()}
+          title={childFolder.split("\\").pop() ?? childFolder}
           subtitle={childFolder}
           accessories={[
             {
@@ -371,7 +371,7 @@ export default function SearchConnections() {
           <List.Item
             key={`folder:${folder}`}
             icon={{ source: Icon.Folder, tintColor: Color.Orange }}
-            title={folder.split("\\").pop()}
+            title={folder.split("\\").pop() ?? folder}
             subtitle={folder}
             accessories={[
               {
