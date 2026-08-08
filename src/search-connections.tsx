@@ -25,12 +25,6 @@ type Connection = {
   isFolder: boolean;
   lastUsed: string | null;
 };
-type Preferences = {
-  showFolders: boolean;
-  showRecent: boolean;
-  showRecentAtStart: boolean;
-};
-
 function guidFromHex(hex: string): string {
   const value = hex.toLowerCase();
   const reverseBytes = (part: string) => part.match(/../g)!.reverse().join("");
@@ -285,7 +279,7 @@ export default function SearchConnections() {
   const { data, isLoading, revalidate } = usePromise(loadConnections);
   const { push } = useNavigation();
   const { showFolders, showRecent, showRecentAtStart } =
-    getPreferenceValues<Preferences>();
+    getPreferenceValues<Preferences.SearchConnections>();
   const [searchText, setSearchText] = useState("");
   const connections = data ?? [];
   const allFolders = useMemo(

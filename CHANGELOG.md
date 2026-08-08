@@ -1,6 +1,6 @@
 # Remote Desktop Manager Connections Changelog
 
-## [Initial Release] - 2026-08-08
+## [Initial Release] - {PR_MERGE_DATE}
 
 - Search local Devolutions Remote Desktop Manager connections from Raycast.
 - Navigate folders and subfolders without exposing folder records as connections.
