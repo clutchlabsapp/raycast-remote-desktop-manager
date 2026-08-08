@@ -3,7 +3,7 @@
   "title": "Remote Desktop Manager Connections",
   "description": "Search and open local Remote Desktop Manager connections from Raycast.",
   "icon": "icon.png",
-  "author": "behnam",
+  "author": "Bagheri",
   "license": "MIT",
   "categories": [
     "Developer Tools"
