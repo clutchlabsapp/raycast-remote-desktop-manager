@@ -17,6 +17,7 @@ import { useMemo, useState } from "react";
 
 const execFileAsync = promisify(execFile);
 const databasePath = `${homedir()}/Library/Application Support/com.devolutions.remotedesktopmanager/Connections.db`;
+const xmlDatabasePath = `${homedir()}/Library/Application Support/com.devolutions.remotedesktopmanager/Connections.xml`;
 type Connection = {
   id: string;
   name: string;
@@ -32,28 +33,54 @@ function guidFromHex(hex: string): string {
 }
 
 async function loadConnections(): Promise<Connection[]> {
-  // Type 25 records are folder nodes. Keep them to reconstruct the tree, but do not display them as connections.
-  const query = `SELECT lower(hex(c.ID)) || char(9) || coalesce(c.Name, '') || char(9) || coalesce(c.GroupName, '') || char(9) || coalesce(c.ConnectionType, 0) || char(9) || coalesce((SELECT max(coalesce(l.StartDateTime, l.EndDateTime)) FROM ConnectionLog l WHERE l.ConnectionID = c.ID), '') FROM Connections c WHERE c.Name IS NOT NULL AND c.Name != '[Root]' ORDER BY c.GroupName, c.Name;`;
-  const result = await execFileAsync("/usr/bin/sqlite3", [
-    "-noheader",
-    databasePath,
-    query,
-  ]);
-  return result.stdout
-    .trim()
-    .split("\n")
-    .filter(Boolean)
-    .map((line) => {
-      const [id, name, groupName, connectionType, lastUsed] = line.split("\t");
-      return {
-        id: guidFromHex(id),
-        name,
-        groupName,
-        connectionType: Number(connectionType),
-        isFolder: Number(connectionType) === 25,
-        lastUsed: lastUsed || null,
-      };
-    });
+  const { readXML } = getPreferenceValues<Preferences.SearchConnections>();
+  if(!readXML) {
+    // Type 25 records are folder nodes. Keep them to reconstruct the tree, but do not display them as connections.
+    const query = `SELECT lower(hex(c.ID)) || char(9) || coalesce(c.Name, '') || char(9) || coalesce(c.GroupName, '') || char(9) || coalesce(c.ConnectionType, 0) || char(9) || coalesce((SELECT max(coalesce(l.StartDateTime, l.EndDateTime)) FROM ConnectionLog l WHERE l.ConnectionID = c.ID), '') FROM Connections c WHERE c.Name IS NOT NULL AND c.Name != '[Root]' ORDER BY c.GroupName, c.Name;`;
+    const result = await execFileAsync("/usr/bin/sqlite3", [
+      "-noheader",
+      databasePath,
+      query,
+    ]);
+    return result.stdout
+      .trim()
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => {
+        const [id, name, groupName, connectionType, lastUsed] = line.split("\t");
+        return {
+          id: guidFromHex(id),
+          name,
+          groupName,
+          connectionType: Number(connectionType),
+          isFolder: Number(connectionType) === 25,
+          lastUsed: lastUsed || null,
+        };
+      });
+  } else {
+    // Type 25 records are folder nodes. Keep them to reconstruct the tree, but do not display them as connections.
+    const query =  "replacing with xsalt"; //`SELECT lower(hex(c.ID)) || char(9) || coalesce(c.Name, '') || char(9) || coalesce(c.GroupName, '') || char(9) || coalesce(c.ConnectionType, 0) || char(9) || coalesce((SELECT max(coalesce(l.StartDateTime, l.EndDateTime)) FROM ConnectionLog l WHERE l.ConnectionID = c.ID), '') FROM Connections c WHERE c.Name IS NOT NULL AND c.Name != '[Root]' ORDER BY c.GroupName, c.Name;`;
+    const result = await execFileAsync("/usr/bin/xsalt", [
+      xmlDatabasePath,
+      query,
+    ]);
+    // figure this out too
+    return result.stdout
+      .trim()
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => {
+        const [id, name, groupName, connectionType, lastUsed] = line.split("\t");
+        return {
+          id: guidFromHex(id),
+          name,
+          groupName,
+          connectionType: Number(connectionType),
+          isFolder: Number(connectionType) === 25,
+          lastUsed: lastUsed || null,
+        };
+      });
+    }
 }
 
 function connectionUrl(connection: Connection): string {

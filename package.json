@@ -13,6 +13,15 @@
   ],
   "preferences": [
     {
+      "name": "readXML",
+      "title": "Read the XML format",
+      "description": "Use the XML format of RDM's address book to get connections",
+      "type": "checkbox",
+      "label": "Read XML",
+      "required": false,
+      "default": false
+    },
+    {
       "name": "showFolders",
       "title": "Show Folders",
       "description": "Show folders as separate navigable items in the connection list",
