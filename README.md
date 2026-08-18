@@ -30,6 +30,14 @@ Unlike generic SSH, RDP, PuTTY, or SecureCRT launchers, this extension does not 
   ~/Library/Application Support/com.devolutions.remotedesktopmanager/Connections.db
   ```
 
+  OR a local RDM XML file at:
+
+  ```text
+  ~/Library/Application Support/com.devolutions.remotedesktopmanager/Connections.xml
+  ```
+
+  (and then select the **Read XML** preference in the Extension settings)
+
 The extension uses RDM's registered `rdm://` URL scheme to open connections. Remote Desktop Manager must be installed and associated with that URL scheme.
 
 ## Installation
