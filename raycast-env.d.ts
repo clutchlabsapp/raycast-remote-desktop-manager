@@ -8,6 +8,8 @@
 /* eslint-disable @typescript-eslint/ban-types */
 
 type ExtensionPreferences = {
+  /** Read the XML format - Use the XML format of RDM's address book to get connections */
+  "readXML": boolean,
   /** Show Folders - Show folders as separate navigable items in the connection list */
   "showFolders": boolean,
   /** Show Recent - Show recently used connections in a separate Recent section */
