@@ -42,44 +42,48 @@ async function loadConnections(): Promise<Connection[]> {
       databasePath,
       query,
     ]);
-    return result.stdout
-      .trim()
-      .split("\n")
-      .filter(Boolean)
-      .map((line) => {
-        const [id, name, groupName, connectionType, lastUsed] = line.split("\t");
-        return {
-          id: guidFromHex(id),
-          name,
-          groupName,
-          connectionType: Number(connectionType),
-          isFolder: Number(connectionType) === 25,
-          lastUsed: lastUsed || null,
-        };
-      });
   } else {
-    // Type 25 records are folder nodes. Keep them to reconstruct the tree, but do not display them as connections.
-    const query =  "replacing with xsalt"; //`SELECT lower(hex(c.ID)) || char(9) || coalesce(c.Name, '') || char(9) || coalesce(c.GroupName, '') || char(9) || coalesce(c.ConnectionType, 0) || char(9) || coalesce((SELECT max(coalesce(l.StartDateTime, l.EndDateTime)) FROM ConnectionLog l WHERE l.ConnectionID = c.ID), '') FROM Connections c WHERE c.Name IS NOT NULL AND c.Name != '[Root]' ORDER BY c.GroupName, c.Name;`;
-    const result = await execFileAsync("/usr/bin/xsalt", [
-      xmlDatabasePath,
-      query,
-    ]);
-    // figure this out too
-    return result.stdout
-      .trim()
-      .split("\n")
-      .filter(Boolean)
-      .map((line) => {
-        const [id, name, groupName, connectionType, lastUsed] = line.split("\t");
-        return {
-          id: guidFromHex(id),
-          name,
-          groupName,
-          connectionType: Number(connectionType),
-          isFolder: Number(connectionType) === 25,
-          lastUsed: lastUsed || null,
-        };
-      });
+    const result = execFileAsync("/usr/bin/xsltproc", ["-", xmlDatabasePath], { maxBuffer: 50 * 1024 * 1024 });
+    result.child.stdin.on('error', () => {});   // swallow EPIPE
+    result.child.stdin.end(`
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+<xsl:output method="text" encoding="UTF-8"/>
+
+<xsl:template match="/">
+  <xsl:for-each select="/ArrayOfConnection/Connection[Name != '[Root]' and Name != '' and ConnectionType != 'Credential']">
+    <xsl:sort select="Name"/>
+    <xsl:value-of select="ID"/>
+    <xsl:text>&#9;</xsl:text>
+    <xsl:value-of select="Name"/>
+    <xsl:text>&#9;</xsl:text>
+    <xsl:value-of select="Group"/>
+    <xsl:text>&#9;</xsl:text>
+    <xsl:value-of select="ConnectionType"/>
+    <xsl:text>&#9;</xsl:text>
+    <xsl:value-of select="UpdateDateTime"/>
+    <xsl:text>&#10;</xsl:text>
+  </xsl:for-each>
+</xsl:template>
+</xsl:stylesheet>`);
+    try {
+      return (await result).stdout
+        .trim()
+        .split("\n")
+        .filter(Boolean)
+        .map((line) => {
+          const [id, name, groupName, connectionType, lastUsed] = line.split("\t"); // making UpdateDateTime to lastUsed just to stick with convention
+          return {
+            id: id,
+            name,
+            groupName,
+            connectionType: connectionType,
+            isFolder: connectionType === 'Group',
+            lastUsed: lastUsed || null,
+          };
+        });
+      } catch (error) {
+          throw new Error(`xsltproc exited ${error.code}: ${error.stderr?.trim() ?? error.message}`);
+      }
     }
 }
 
