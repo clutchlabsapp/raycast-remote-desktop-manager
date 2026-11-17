@@ -82,7 +82,8 @@ async function loadConnections(): Promise<Connection[]> {
           };
         });
       } catch (error) {
-          throw new Error(`xsltproc exited ${error.code}: ${error.stderr?.trim() ?? error.message}`);
+          const err = error as { message: string; code: number; stderr: string }
+          throw new Error(`xsltproc exited ${err.code}: ${err.stderr?.trim() ?? err.message}`);
       }
     }
 }
