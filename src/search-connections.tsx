@@ -22,7 +22,7 @@ type Connection = {
   id: string;
   name: string;
   groupName: string;
-  connectionType: number;
+  connectionType: number | string; // number from SQLite, name (e.g. "Group") from XML
   isFolder: boolean;
   lastUsed: string | null;
 };
@@ -34,7 +34,7 @@ function guidFromHex(hex: string): string {
 
 async function loadConnections(): Promise<Connection[]> {
   const { readXML } = getPreferenceValues<Preferences.SearchConnections>();
-  if(!readXML) {
+  if (!readXML) {
     // Type 25 records are folder nodes. Keep them to reconstruct the tree, but do not display them as connections.
     const query = `SELECT lower(hex(c.ID)) || char(9) || coalesce(c.Name, '') || char(9) || coalesce(c.GroupName, '') || char(9) || coalesce(c.ConnectionType, 0) || char(9) || coalesce((SELECT max(coalesce(l.StartDateTime, l.EndDateTime)) FROM ConnectionLog l WHERE l.ConnectionID = c.ID), '') FROM Connections c WHERE c.Name IS NOT NULL AND c.Name != '[Root]' ORDER BY c.GroupName, c.Name;`;
     const result = await execFileAsync("/usr/bin/sqlite3", [
@@ -42,10 +42,28 @@ async function loadConnections(): Promise<Connection[]> {
       databasePath,
       query,
     ]);
+    return result.stdout
+      .trim()
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => {
+        const [id, name, groupName, connectionType, lastUsed] =
+          line.split("\t");
+        return {
+          id: guidFromHex(id),
+          name,
+          groupName,
+          connectionType: Number(connectionType),
+          isFolder: Number(connectionType) === 25,
+          lastUsed: lastUsed || null,
+        };
+      });
   } else {
-    const result = execFileAsync("/usr/bin/xsltproc", ["-", xmlDatabasePath], { maxBuffer: 50 * 1024 * 1024 });
-    result.child.stdin.on('error', () => {});   // swallow EPIPE
-    result.child.stdin.end(`
+    const result = execFileAsync("/usr/bin/xsltproc", ["-", xmlDatabasePath], {
+      maxBuffer: 50 * 1024 * 1024,
+    });
+    result.child.stdin?.on("error", () => {}); // swallow EPIPE
+    result.child.stdin?.end(`
 <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 <xsl:output method="text" encoding="UTF-8"/>
 
@@ -71,21 +89,24 @@ async function loadConnections(): Promise<Connection[]> {
         .split("\n")
         .filter(Boolean)
         .map((line) => {
-          const [id, name, groupName, connectionType, lastUsed] = line.split("\t"); // making UpdateDateTime to lastUsed just to stick with convention
+          const [id, name, groupName, connectionType, lastUsed] =
+            line.split("\t"); // making UpdateDateTime to lastUsed just to stick with convention
           return {
             id: id,
             name,
             groupName,
             connectionType: connectionType,
-            isFolder: connectionType === 'Group',
+            isFolder: connectionType === "Group",
             lastUsed: lastUsed || null,
           };
         });
-      } catch (error) {
-          const err = error as { message: string; code: number; stderr: string }
-          throw new Error(`xsltproc exited ${err.code}: ${err.stderr?.trim() ?? err.message}`);
-      }
+    } catch (error) {
+      const err = error as { message: string; code: number; stderr: string };
+      throw new Error(
+        `xsltproc exited ${err.code}: ${err.stderr?.trim() ?? err.message}`,
+      );
     }
+  }
 }
 
 function connectionUrl(connection: Connection): string {
