@@ -2,8 +2,10 @@ import {
   Action,
   ActionPanel,
   Color,
+  environment,
   getPreferenceValues,
   Icon,
+  LaunchProps,
   List,
   showToast,
   Toast,
@@ -59,30 +61,13 @@ async function loadConnections(): Promise<Connection[]> {
         };
       });
   } else {
-    const result = execFileAsync("/usr/bin/xsltproc", ["-", xmlDatabasePath], {
-      maxBuffer: 50 * 1024 * 1024,
-    });
-    result.child.stdin?.on("error", () => {}); // swallow EPIPE
-    result.child.stdin?.end(`
-<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
-<xsl:output method="text" encoding="UTF-8"/>
-
-<xsl:template match="/">
-  <xsl:for-each select="/ArrayOfConnection/Connection[Name != '[Root]' and Name != '' and ConnectionType != 'Credential']">
-    <xsl:sort select="Name"/>
-    <xsl:value-of select="ID"/>
-    <xsl:text>&#9;</xsl:text>
-    <xsl:value-of select="Name"/>
-    <xsl:text>&#9;</xsl:text>
-    <xsl:value-of select="Group"/>
-    <xsl:text>&#9;</xsl:text>
-    <xsl:value-of select="ConnectionType"/>
-    <xsl:text>&#9;</xsl:text>
-    <xsl:value-of select="UpdateDateTime"/>
-    <xsl:text>&#10;</xsl:text>
-  </xsl:for-each>
-</xsl:template>
-</xsl:stylesheet>`);
+    // The stylesheet lives in assets/ and is passed as a file path. Feeding it through
+    // stdin needs result.child, which Tinycast's execFile doesn't provide.
+    const result = execFileAsync(
+      "/usr/bin/xsltproc",
+      [`${environment.assetsPath}/connections.xsl`, xmlDatabasePath],
+      { maxBuffer: 50 * 1024 * 1024 },
+    );
     try {
       return (await result).stdout
         .trim()
@@ -328,12 +313,15 @@ function FolderView({
   );
 }
 
-export default function SearchConnections() {
+export default function SearchConnections(
+  props: LaunchProps<{ arguments: Arguments.SearchConnections }>,
+) {
   const { data, isLoading, revalidate } = usePromise(loadConnections);
   const { push } = useNavigation();
   const { showFolders, showRecent, showRecentAtStart } =
     getPreferenceValues<Preferences.SearchConnections>();
-  const [searchText, setSearchText] = useState("");
+  // Start with whatever was typed into the launcher's argument field (Tab in Raycast/Tinycast).
+  const [searchText, setSearchText] = useState(props.arguments?.query ?? "");
   const connections = data ?? [];
   const allFolders = useMemo(
     () =>
@@ -409,6 +397,7 @@ export default function SearchConnections() {
     <List
       isLoading={isLoading}
       searchBarPlaceholder="Search RDM connections"
+      searchText={searchText}
       throttle
       onSearchTextChange={setSearchText}
     >
