@@ -54,7 +54,15 @@
       "name": "search-connections",
       "title": "Remote Desktop Manager Connections",
       "description": "Search and open connections from Remote Desktop Manager",
-      "mode": "view"
+      "mode": "view",
+      "arguments": [
+        {
+          "name": "query",
+          "placeholder": "Connection",
+          "type": "text",
+          "required": false
+        }
+      ]
     }
   ],
   "dependencies": {
